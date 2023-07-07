@@ -1,0 +1,6 @@
+<RCC>
+    <qresource prefix="/content">
+        <file>captcha.html</file>
+        <file>settings.json</file>
+    </qresource>
+</RCC>
