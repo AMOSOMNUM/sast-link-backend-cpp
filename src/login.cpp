@@ -48,7 +48,7 @@ Response LoginHandler::process() {
                     return Error(int(Handler::CommonErrCode::Forbidden), "Password Unmatch!").make_response();
     _SQL::instance().unlock();
 
-    QString new_token = TokenManager::instance().create(username);
+    QString new_token = TokenManager::instance().create(username, OauthExpireTime);
     Response response(new_token, true);
     LoginStatus::instance().login(username);
     return response;

@@ -29,7 +29,10 @@ add_executable(SAST_Link
     ${QRC_FILE}
 )
 
-target_include_directories(SAST_Link PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_include_directories(SAST_Link PRIVATE    
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/Qt-Based-JsonDeserialiser
+)
 
 target_link_libraries(SAST_Link PRIVATE Qt6::Core Qt6::Sql Qt6::HttpServer)
 

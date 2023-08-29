@@ -17,8 +17,14 @@ public:
         return singleton;
     }
 public:
-    void login(const QString& username) {}
-    void logout(const QString& username);
+    void login(const QString& username) {
+        std::lock_guard guard(lock);
+        logged.bucket(username);
+    }
+    void logout(const QString& username) {
+        std::lock_guard guard(lock);
+        logged.erase(username);
+    }
 };
 
 class LoginHandler : public Handler{
