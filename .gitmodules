@@ -1,0 +1,3 @@
+[submodule "Qt-Based-JsonDeserialiser"]
+	path = Qt-Based-JsonDeserialiser
+	url = https://github.com/AMOSOMNUM/Qt-Based-JsonDeserialiser.git
