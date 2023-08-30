@@ -50,6 +50,5 @@ Response LoginHandler::process() {
 
     QString new_token = TokenManager::instance().create(username, OauthExpireTime);
     Response response(new_token, true);
-    LoginStatus::instance().login(username);
     return response;
 }

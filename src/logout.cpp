@@ -1,7 +1,5 @@
 #include "logout.h"
 
-#include "login.h"
-#include "fake_sql.h"
 #include "token_manager.h"
 
 bool LogoutHandler::accept(Error& err) {
@@ -23,18 +21,15 @@ bool LogoutHandler::accept(Error& err) {
 }
 
 Response LogoutHandler::process() {
-    QString password = request.value("password");
     //token校验
     QString token;
     for (const auto& i : request.headers())
         if (i.first == "TOKEN") {
             token = i.second;
             break;
-        }    
+        }
     Error err;
-    QString username;
-    if (!TokenManager::instance().fetch(token, username, err))
+    if (!TokenManager::instance().remove(token, err))
         return err.make_response();
-    LoginStatus::instance().logout(username);
     return Response();
 }

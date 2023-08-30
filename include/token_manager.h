@@ -65,12 +65,27 @@ public:
         return false;
     }
 
-    inline QString create(const QString& email, int expire = 10, QString extra_info = QString()) {
+    bool remove(const QString& token, Handler::Error& err) {
+        std::shared_lock guard(lock);
+        if (!stored.count(token)) {
+            err = Handler::Error(int(Handler::CommonErrCode::Forbidden), "Token Invalid!");
+            return false;
+        }
+        QString key;
+        stored[token].fetch(key, err);
+        stored.erase(token);
+        users.erase(key);
+        return false;
+    }
+
+    QString create(const QString& email, int expire = 10, QString extra_info = QString()) {
         std::lock_guard guard(lock);
         QString key = email.toLower();
         QString token;
         Token token_info(key, extra_info, token, expire);
-        while (stored.count(token) && !stored[token].isExpired()) {
+        if (users.count(key))
+            stored.erase(users[key]);
+        while (stored.count(token)) {
             extra_info += " ";
             token_info = Token(key, extra_info, token, expire);
         }
