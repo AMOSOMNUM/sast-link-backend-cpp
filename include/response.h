@@ -8,6 +8,8 @@
 struct TokenData {
     QString type;
     QString token;
+
+    TokenData(const QString& token, const QString& name) : type(name), token(token) {}
     TokenData(const QString& token, bool flag) : type(flag ? "login-ticket" : "register-ticket"), token(token) {}
 
     operator QJsonValue() {
@@ -23,10 +25,14 @@ struct Response {
     std::optional<QString> errmsg;
     QJsonValue data;
 
-    Response(bool success = true) : success(true) {}
+    Response(bool success = true) : success(success) {}
     explicit Response(int errCode, QString msg) : success(false), errcode(QString::number(errCode)), errmsg(msg) {}
     Response(const QString& token, bool flag) : success(true) {
         TokenData json(token, flag);
+        data = json;
+    }
+    Response(const QString& token, const QString& key_name) : success(true) {
+        TokenData json(token, key_name);
         data = json;
     }
     QHttpServerResponse toRequest() const;

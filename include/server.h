@@ -3,6 +3,8 @@
 
 #include "account_exist.h"
 #include "fake_sql.h"
+#include "login.h"
+#include "logout.h"
 #include "mail.h"
 #include "thread_pool.h"
 #include "register.h"
@@ -39,6 +41,18 @@ public:
             future.wait();
             return future.get();
         });
+        server.route("/api/v1/user/login", [](const QHttpServerRequest& request) {
+            LoginHandler handler(request);
+            Future<QJsonObject> future([&](){return handler();});
+            future.wait();
+            return future.get();
+        });
+        server.route("/api/v1/user/logout", [](const QHttpServerRequest& request) {
+            LogoutHandler handler(request);
+            Future<QJsonObject> future([&](){return handler();});
+            future.wait();
+            return future.get();
+        });
 
         server.listen(QHostAddress::LocalHost, 8080);
         timer = new QTimer;
@@ -46,7 +60,7 @@ public:
             _SQL::instance().save();
             qDebug() << QDateTime::currentDateTime().toString() << "-saved.";
         });
-        timer->setInterval(5000);
+        timer->setInterval(50000);
         timer->start();
     }
     ~Server() {

@@ -27,11 +27,13 @@ Response AccountExistHandler::process() {
     _SQL::instance().getLock();
     bool registered = false;
     auto query = _SQL::instance().select(QStringList() << "email" << "is_deleted");
-    while (query.next())
+    while (query.next()) {
+        qDebug() << query.value(0);
         if (query.value(0) == info.username) {
             if (registered = !query.value(1).toBool())
                 break;
         }
+    }
     _SQL::instance().unlock();
 
     if (info.flag != registered)

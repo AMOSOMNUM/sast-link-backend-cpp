@@ -3,7 +3,8 @@
 
 #include "handler.h"
 
-class LoginHandler : public Handler{
+class LoginHandler : public Handler {
+    std::map<QString, QString> formdata;
 private:
     virtual bool accept(Error& err) override;
     virtual Response process() override;

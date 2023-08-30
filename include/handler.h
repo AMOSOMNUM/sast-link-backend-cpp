@@ -43,7 +43,9 @@ protected:
     Handler(const QHttpServerRequest& request) : request(request) {}
     virtual ~Handler() {}
 
-    static std::map<QString, QString> decode(const QByteArray& formdata) {
+    static bool decode(const QHttpServerRequest& request, std::map<QString, QString>& result);
+
+    static std::map<QString, QString> decode_url_form(const QByteArray& formdata) {
         std::map<QString, QString> result;
         const auto& form = formdata.split('&');
         for (const auto& i : form) {

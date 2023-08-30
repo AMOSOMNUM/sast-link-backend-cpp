@@ -13,8 +13,9 @@ bool RegisterHandler::accept(Error& err) {
             pass = true;
             break;
         }
-    const auto& form = Handler::decode(request.body());
-    if (!(pass && form.count("password"))) {
+
+    formdata = Handler::decode_url_form(request.body());
+    if (!(pass && formdata.count("password"))) {
         err = Error(int(CommonErrCode::Not_Found), "404 NOT FOUND");
         return false;
     }
@@ -34,8 +35,7 @@ Response RegisterHandler::process() {
     if (!TokenManager::instance().fetch(token, username, err))
         return err.make_response();
 
-    auto form = Handler::decode(request.body());
-    QString password = form["password"];
+    QString password = formdata["password"];
 
     //数据校验
     User data;

@@ -4,18 +4,20 @@
 #include "token_manager.h"
 
 bool LoginHandler::accept(Error& err) {
-    if (request.method() != QHttpServerRequest::Method::Get) {
+    if (request.method() != QHttpServerRequest::Method::Post) {
         err = Error(int(CommonErrCode::Method_Not_Allowed), "Method Not Allowed");
         return false;
     }
     bool pass = false;
     for (const auto& i : request.headers())
-        if (i.first == "LOGIN_TICKET") {
+        if (i.first == "LOGIN-TICKET") {
             pass = true;
             break;
         }
-    const auto& form = request.query();
-    if (!(pass && form.hasQueryItem("password"))) {
+    if (pass)
+        pass = decode(request, formdata);
+    qDebug() << formdata;
+    if (!(pass && formdata.count("password"))) {
         err = Error(int(CommonErrCode::Not_Found), "404 NOT FOUND");
         return false;
     }
@@ -23,12 +25,11 @@ bool LoginHandler::accept(Error& err) {
 }
 
 Response LoginHandler::process() {
-    const auto& form = request.query();
-    QString password = form.queryItemValue("password");
+    QString password = formdata["password"];
     //token校验
     QString token;
     for (const auto& i : request.headers())
-        if (i.first == "LOGIN_TICKET") {
+        if (i.first == "LOGIN-TICKET") {
             token = i.second;
             break;
         }
@@ -49,6 +50,6 @@ Response LoginHandler::process() {
     _SQL::instance().unlock();
 
     QString new_token = TokenManager::instance().create(username, OauthExpireTime);
-    Response response(new_token, true);
+    Response response(new_token, QStringLiteral("token"));
     return response;
 }

@@ -6,6 +6,7 @@
 #include <mutex>
 
 class RegisterHandler : public Handler {
+    std::map<QString, QString> formdata;
 private:
     virtual bool accept(Error& err) override;
     virtual Response process() override;

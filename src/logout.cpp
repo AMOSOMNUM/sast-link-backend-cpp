@@ -3,7 +3,7 @@
 #include "token_manager.h"
 
 bool LogoutHandler::accept(Error& err) {
-    if (request.method() != QHttpServerRequest::Method::Get) {
+    if (request.method() != QHttpServerRequest::Method::Post) {
         err = Error(int(CommonErrCode::Method_Not_Allowed), "Method Not Allowed");
         return false;
     }

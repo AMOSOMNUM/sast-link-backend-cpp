@@ -73,6 +73,7 @@ struct User {
     User() = default;
     User(const QJsonObject &json) {
         declare_deserialiser("id", uid, id_serialiser);
+        declare_deserialiser("email", email, email_serialiser);
         declare_deserialiser("password", password, pwd_serialiser);
         declare_deserialiser("QQ_id", contact.qq_id, qq_serialiser);
         declare_deserialiser("Github_id", contact.github_id, github_serialiser);
@@ -81,7 +82,9 @@ struct User {
 
         JsonDeserialise::JsonDeserialiser seriliser(
             id_serialiser,
+            email_serialiser,
             pwd_serialiser,
+            qq_serialiser,
             github_serialiser,
             lark_serialiser,
             wechat_serialiser);
@@ -90,6 +93,7 @@ struct User {
 
     QJsonValue to_json() {
         declare_deserialiser("id", uid, id_serialiser);
+        declare_deserialiser("email", email, email_serialiser);
         declare_deserialiser("password", password, pwd_serialiser);
         declare_deserialiser("QQ_id", contact.qq_id, qq_serialiser);
         declare_deserialiser("Github_id", contact.github_id, github_serialiser);
@@ -98,7 +102,9 @@ struct User {
 
         JsonDeserialise::JsonDeserialiser seriliser(
             id_serialiser,
+            email_serialiser,
             pwd_serialiser,
+            qq_serialiser,
             github_serialiser,
             lark_serialiser,
             wechat_serialiser);

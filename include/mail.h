@@ -52,6 +52,7 @@ private:
 };
 
 class VerifyMailHandler : public Handler {
+    std::map<QString, QString> formdata;
 public:
     VerifyMailHandler(const QHttpServerRequest& request) : Handler(request) {}
 private:

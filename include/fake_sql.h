@@ -63,6 +63,7 @@ public:
         declare_serialiser("Admin", admin_table, admin_);
         JsonDeserialise::JsonSerialiser serialiser(user_, admin_);
         serialiser.serialise_to_file("data.json");
+        lock.unlock();
     }
 private:
     inline QVariant abstract(const User& data, const QString& index) const {

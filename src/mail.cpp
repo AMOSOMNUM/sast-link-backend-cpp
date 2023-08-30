@@ -1,6 +1,6 @@
 #include "mail.h"
 
-#include "json_deserialiser.hpp"
+#include "json_deserialise.hpp"
 #include "token_manager.h"
 
 #include <QCryptographicHash>
@@ -188,7 +188,7 @@ bool SendMailHandler::accept(Error& err) {
     }
     bool pass = true;
     for (const auto& i : request.headers())
-        if (i.first == "REGISTER_TICKET") {
+        if (i.first == "REGISTER-TICKET") {
             pass = true;
             break;
         }
@@ -206,7 +206,7 @@ Response SendMailHandler::process() {
     //token校验
     QString token;
     for (const auto& i : request.headers())
-        if (i.first == "REGISTER_TICKET") {
+        if (i.first == "REGISTER-TICKET") {
             token = i.second;
             break;
         }
@@ -240,12 +240,13 @@ bool VerifyMailHandler::accept(Error& err) {
     }
     bool pass = true;
     for (const auto& i : request.headers())
-        if (i.first == "REGISTER_TICKET") {
+        if (i.first == "REGISTER-TICKET") {
             pass = true;
             break;
         }
-    const auto& form = Handler::decode(request.body());
-    if (!(pass && form.count("captcha"))) {
+
+    formdata = Handler::decode_url_form(request.body());
+    if (!(pass && formdata.count("captcha"))) {
         err = Error(int(CommonErrCode::Not_Found), "404 NOT FOUND");
         return false;
     }
@@ -256,7 +257,7 @@ Response VerifyMailHandler::process() {
     //token校验
     QString token;
     for (const auto& i : request.headers())
-        if (i.first == "REGISTER_TICKET") {
+        if (i.first == "REGISTER-TICKET") {
             token = i.second;
             break;
         }
@@ -265,8 +266,7 @@ Response VerifyMailHandler::process() {
     if (!TokenManager::instance().fetch(token, username, err))
         return err.make_response();
 
-    auto form = Handler::decode(request.body());
-    QString captcha = form["captcha"].toUpper();
+    QString captcha = formdata["captcha"].toUpper();
     if (!Mail::instance().verifyCaptcha(username, captcha, err))
         return err.make_response();
 
