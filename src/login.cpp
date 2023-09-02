@@ -16,7 +16,6 @@ bool LoginHandler::accept(Error& err) {
         }
     if (pass)
         pass = decode(request, formdata);
-    qDebug() << formdata;
     if (!(pass && formdata.count("password"))) {
         err = Error(int(CommonErrCode::Not_Found), "404 NOT FOUND");
         return false;
