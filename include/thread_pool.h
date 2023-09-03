@@ -150,6 +150,12 @@ public:
     inline const T& get() {
         return *value;
     }
+
+    inline T move() {
+        T result = std::move(*value);
+        value.reset();
+        return result;
+    }
 };
 
 template<typename T>

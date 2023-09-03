@@ -6,6 +6,7 @@
 #include "login.h"
 #include "logout.h"
 #include "mail.h"
+#include "oauth.h"
 #include "thread_pool.h"
 #include "register.h"
 
@@ -53,6 +54,19 @@ public:
             future.wait();
             return future.get();
         });
+        server.route("/api/v1/oauth2/authorize", [](const QHttpServerRequest& request) {
+            OauthHandler handler(request);
+            Future<QHttpServerResponse> future([&](){return handler();});
+            future.wait();
+            return future.move();
+        });
+        server.route("/api/v1/oauth2/token", [](const QHttpServerRequest& request) {
+            AccessTokenHandler handler(request);
+            Future<QJsonObject> future([&](){return handler();});
+            future.wait();
+            return future.get();
+        });
+
 
         server.listen(QHostAddress::LocalHost, 8080);
         timer = new QTimer;

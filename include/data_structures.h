@@ -1,6 +1,8 @@
 #ifndef DATA_STRUCTURES_H
 #define DATA_STRUCTURES_H
 
+#include <mutex>
+
 #include "json_deserialise.hpp"
 
 // SQL Only
@@ -115,12 +117,22 @@ struct User {
 declare_class_with_json_constructor_and_serialiser(User);
 
 struct Client {
-    QString id, secret, redirect_uri;
+    const QString id, secret, redirect_uri;
     //std::map<QString, QString> refresh_tokens;
-    std::map<QString, QString> access_tokens;
+    //<TOKEN, <EXPIRE, ACCESS_TOKEN>>
+    std::map<QString, std::pair<QDateTime, QString>> access_tokens;
+    //<ACCESS_TOKEN, UID>
+    std::map<QString, QString> storage;
+    //<UID, TOKEN>
+    std::map<QString, QString> users;
+    std::mutex lock;
 
-    QString create_code(const QString& token);
-    QString get_access_code(const QString& code);
+    QString create(const QString& code, const QString& uid);
+    inline QString get_access_token(const QString& token) {
+        if (access_tokens.count(token) && access_tokens[token].first > QDateTime::currentDateTimeUtc())
+            return access_tokens[token].second;
+        return QString();
+    }
 };
 
 #endif // DATA_STRUCTURES_H

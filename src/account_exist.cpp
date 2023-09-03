@@ -8,10 +8,10 @@ bool AccountExistHandler::accept(Error& err) {
         return false;
     }
     const auto& form = request.query();
-    if (!(form.hasQueryItem("username") &&
-        form.queryItemValue("username").toLower().endsWith("@njupt.edu.cn") &&
-        form.hasQueryItem("flag") &&
-        form.queryItemValue("flag") == "1" || form.queryItemValue("flag") == "0")) {
+    if (!form.hasQueryItem("username")
+    ||  !form.queryItemValue("username").toLower().endsWith("@njupt.edu.cn")
+    ||  !form.hasQueryItem("flag")
+    ||  form.queryItemValue("flag") != "1" && form.queryItemValue("flag") != "0") {
         err = Error(int(CommonErrCode::Not_Found), "404 NOT FOUND");
         return false;
     }
@@ -24,7 +24,7 @@ Response AccountExistHandler::process() {
     info.username = form.queryItemValue("username").toLower();
     info.flag = form.queryItemValue("flag").toUInt();
     //查询账号是否已注册
-    _SQL::instance().getLock();
+    _SQL::instance().getReadLock();
     bool registered = false;
     auto query = _SQL::instance().select(QStringList() << "email" << "is_deleted");
     while (query.next()) {
@@ -33,7 +33,7 @@ Response AccountExistHandler::process() {
                 break;
         }
     }
-    _SQL::instance().unlock();
+    _SQL::instance().unlockRead();
 
     if (info.flag != registered)
         return Response(false);

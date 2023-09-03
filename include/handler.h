@@ -52,7 +52,22 @@ protected:
             auto pair = i.split('=');
             result[pair[0]] = pair[1];
         }
-        return std::move(result);
+        return result;
+    }
+};
+
+class RedirectHandler : public Handler {
+    virtual QHttpServerResponse redirect() = 0;
+protected:
+    RedirectHandler() = delete;
+    RedirectHandler(const QHttpServerRequest& request) : Handler(request) {}
+    virtual ~RedirectHandler() {}
+public:
+    QHttpServerResponse operator()() {
+        Error err;
+        if (!accept(err))
+            return err.make_response().toResponse();
+        return redirect();
     }
 };
 

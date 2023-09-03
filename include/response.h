@@ -19,14 +19,35 @@ struct TokenData {
     }
 };
 
+struct AccessTokenData {
+    QString access;
+    int expire = 1800;
+    //QString refresh;
+    QString scope = "all";
+    QString type = "Bearer";
+
+    AccessTokenData(const QString& token) : access(token) {}
+};
+
+register_object_member(AccessTokenData, "access_token", access);
+register_object_member(AccessTokenData, "expires_in", expire);
+register_object_member(AccessTokenData, "scope", scope);
+register_object_member(AccessTokenData, "token_type", type);
+declare_object(AccessTokenData,
+               object_member(AccessTokenData, access),
+               object_member(AccessTokenData, expire),
+               object_member(AccessTokenData, scope),
+               object_member(AccessTokenData, type)
+               )
+
 struct Response {
     bool success;
     std::optional<QString> errcode;
     std::optional<QString> errmsg;
     QJsonValue data;
 
-    Response(bool success = true) : success(success) {}
-    explicit Response(int errCode, QString msg) : success(false), errcode(QString::number(errCode)), errmsg(msg) {}
+    explicit Response(bool success = true) : success(success) {}
+    Response(int errCode, QString msg) : success(false), errcode(QString::number(errCode)), errmsg(msg) {}
     Response(const QString& token, bool flag) : success(true) {
         TokenData json(token, flag);
         data = json;
@@ -35,7 +56,11 @@ struct Response {
         TokenData json(token, key_name);
         data = json;
     }
-    QHttpServerResponse toRequest() const;
+    Response(const AccessTokenData& data) {
+        declare_top_serialiser(data, holder);
+        this->data = holder.to_json();
+    }
+    QHttpServerResponse toResponse() const;
 };
 
 register_object_member(Response, "Success", success);

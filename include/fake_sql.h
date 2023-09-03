@@ -52,6 +52,12 @@ public:
     inline void unlock() {
         lock.unlock();
     }
+    inline void getReadLock() {
+        lock.lock();
+    }
+    inline void unlockRead() {
+        lock.unlock();
+    }
 
     static _SQL& instance() {
         static _SQL singleton;
