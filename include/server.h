@@ -58,7 +58,7 @@ public:
             OauthHandler handler(request);
             Future<QHttpServerResponse> future([&](){return handler();});
             future.wait();
-            return future.move();
+            return future.take();
         });
         server.route("/api/v1/oauth2/token", [](const QHttpServerRequest& request) {
             AccessTokenHandler handler(request);

@@ -2,10 +2,11 @@
 #define THREAD_POOL_H
 
 #include <atomic>
+#include <condition_variable>
+#include <forward_list>
 #include <functional>
-#include <future>
 #include <iostream>
-#include <list>
+#include <queue>
 
 class FutureStatus;
 class Task {
@@ -19,14 +20,14 @@ public:
         FAILED      = -3
     };
 private:
-    FutureStatus& bind;
     std::atomic<TaskStatus> status = TaskStatus::WAITING;
     std::function<void()> job;
+    FutureStatus& bind;
 public:
-    Task(FutureStatus& bind, std::function<void()>&& job) : bind(bind), job(std::move(job)) {}
+    Task(FutureStatus& bind, std::function<void()>&& job) : job(std::move(job)), bind(bind) {}
     ~Task();
-
-    inline void operator()() {
+private:
+    inline void operator()() noexcept {
         status.store(TaskStatus::RUNNING, std::memory_order_relaxed);
         try {
             job();
@@ -36,14 +37,15 @@ public:
             status.store(TaskStatus::FAILED, std::memory_order_relaxed);
         }
     }
-    inline bool occupy() {
+    // check if cancelled
+    inline bool enable() {
         TaskStatus waiting_status = TaskStatus::WAITING;
         return status.compare_exchange_strong(waiting_status, TaskStatus::BEFORE_RUN, std::memory_order_acq_rel);
     }
+public:
     bool cancel();
-    inline bool isWaiting() {
-        return status.load(std::memory_order_consume) == TaskStatus::WAITING;
-    }
+
+    friend class ThreadPool;
 };
 
 enum class FutureStatusType {
@@ -52,130 +54,117 @@ enum class FutureStatusType {
 };
 
 class FutureStatus {
-    std::atomic<std::size_t> count = 1;
-public:
-    FutureStatusType status = FutureStatusType::RUNNING;
+    std::atomic<size_t> count = 1;
     std::condition_variable cv;
     std::mutex lock;
+    Task* task = nullptr;
+public:
+    FutureStatusType status = FutureStatusType::RUNNING;
 
     FutureStatus(std::function<void()>&& functor);
     FutureStatus() = delete;
-
+private:
     void finish(Task::TaskStatus code) {
-        if (!count) {
+        if (!count.load(std::memory_order_acquire)) {
             delete this;
             return;
         }
+        task = nullptr;
         switch(code) {
         case Task::TaskStatus::FINISHED: status = FutureStatusType::FINISHED;break;
         case Task::TaskStatus::FAILED: status = FutureStatusType::FAILED;break;
         case Task::TaskStatus::CANCELLED: status = FutureStatusType::CANCELLED;break;
-        default: status = FutureStatusType::INVALID; throw std::runtime_error("Unknown Exception!");
         }
-        cv.notify_all();
     }
-
+public:
     inline void ref_inc() {
-        count++;
+        count.fetch_add(1, std::memory_order_relaxed);
     }
 
     inline void ref_dec() {
-        drop_ref();
-        if (!count) {
-            delete this;
-            return;
-        }
+        count.fetch_sub(1, std::memory_order_acq_rel);
     }
 
-    inline void drop_ref() {
-        count--;
+    inline bool cancel() {
+        if (task)
+            return task->cancel();
+        return true;
     }
+
+    inline void wait() {
+        std::unique_lock guard(lock);
+        cv.wait(guard);
+    }
+
+    friend class Task;
 };
 
-class FutureBase {
+template <typename T = void>
+class Future;
+
+template <>
+class Future<void> {
     FutureStatus* status = nullptr;
-    FutureStatusType result;
-protected:
-    FutureBase(std::function<void()>&& functor) : status(new FutureStatus(std::move(functor))) {}
-    FutureBase(FutureBase&& other) {
+    FutureStatusType result = FutureStatusType::INVALID;
+
+public:
+    Future() = default;
+    Future(std::function<void()>&& functor) : status(functor ? new FutureStatus(std::move(functor)) : nullptr) {}
+    Future(const Future& other) {
         status = other.status;
-        result = getStatus();
         if (status)
             status->ref_inc();
+        getStatus();
     }
-public:
-    ~FutureBase() {
+    ~Future() {
         if (status)
-            status->drop_ref();
+            status->ref_dec();
     }
 
-    FutureBase& operator= (FutureBase&& other) {
-        if (status)
-            status->drop_ref();
-        result = other.getStatus();
-        status = other.status;
-        if (status)
-            status->ref_inc();
-        return *this;
-    }
     FutureStatusType getStatus() {
         if (!status)
             return result;
         result = status->status;
         if (result != FutureStatusType::RUNNING) {
-            status->cv.notify_all();
             status->ref_dec();
             status = nullptr;
-            return result;
         }
-        return FutureStatusType::RUNNING;
+        return result;
     }
-    void wait() {
-        while (getStatus() == FutureStatusType::RUNNING) {
-            std::unique_lock guard(status->lock);
-            status->cv.wait(guard);
-        }
+
+    inline bool cancel() {
+        if (status)
+            return status->cancel();
+        return true;
+    }
+
+    inline void wait() {
+        if (getStatus() == FutureStatusType::RUNNING)
+            status->wait();
     }
 };
 
-template<typename T = void>
-class Future : public FutureBase {
+template <typename T>
+class Future : public Future<> {
     std::shared_ptr<T> value;
 public:
-    Future(std::function<T()> functor) : FutureBase([=](){ value = std::make_shared<T>(functor()); }) {}
-    Future(Future&& other) : FutureBase(std::move(other)) {
-        value = std::move(other.value);
+    Future() = default;
+    Future(std::function<T()> functor) : Future<>([=](){ value = std::make_shared<T>(functor()); }) {}
+    Future(const Future& other) : Future<>(other) {
+        value = other.value;
     }
 
     inline const T& get() {
+        wait();
         return *value;
     }
 
-    inline T move() {
-        T result = std::move(*value);
+    inline T take() {
+        wait();
+        T result(std::move(*value));
         value.reset();
         return result;
     }
-};
-
-template<typename T>
-class Future<T&> : public FutureBase {
-    T& value;
-public:
-    Future(std::function<void(T&)> functor, T& source) : FutureBase([=](){ functor(source); }), value(source) {}
-    Future(std::function<T()> functor, T& source) : FutureBase([=](){ source = functor(); }), value(source) {}
-    Future(Future&& other) : FutureBase(std::move(other)) {}
-
-    inline const T& get() {
-        return value;
-    }
-};
-
-template<>
-class Future<void> : public FutureBase {
-public:
-    Future(std::function<void()>&& functor) : FutureBase(std::move(functor)) {}
-    Future(Future&& other) : FutureBase(std::move(other)) {}
 };
 
 class ThreadPool {
@@ -183,21 +172,22 @@ class ThreadPool {
     //notify when a new job is delivered.
     std::condition_variable cv;
     //thread pool
-    std::list<std::unique_ptr<std::thread>> pool;
+    std::vector<std::thread> pool;
     //waiting queue
-    std::list<Task*> queue;
+    std::queue<Task*> queue;
+public:
+    int MAX_THREAD = std::thread::hardware_concurrency();
 private:
-    ThreadPool() {}
+    ThreadPool() {
+        pool.reserve(MAX_THREAD);
+    }
 public:
     static ThreadPool& instance() {
         static ThreadPool singleton;
         return singleton;
     }
-public:
-    int MAX_THREAD = std::thread::hardware_concurrency();
-public:
+
     void enqueue(Task* task);
-    void cancel(Task* task);
 };
 
 #endif // THREAD_POOL_H
